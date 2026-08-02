@@ -74,7 +74,7 @@
         }
 
         .app-btn.selected {
-            border-color: #FF6B4A;
+            border-color: #ffffff;
         }
 
         .window {
@@ -88,7 +88,7 @@
         }
 
         .window.dragged {
-            border-color: #FF6B4A;
+            border-color: #ffffff;
         }
 
 
@@ -121,12 +121,12 @@
         }
 
         textarea:focus {
-            border-color: #FF6B4A;
+            border-color: #ffffff;
         }
 
         textarea::selection {
             color: #000000;
-            background-color: #FF6B4A;
+            background-color: #ffffff;
         }
 
         input {
@@ -142,26 +142,55 @@
             text-align: left;
         }
 
-        input:focus {
-            border-color: #FF6B4A;
-        }
-
-        input::selection {
-            color: #000000;
-            background-color: #FF6B4A;
-        }
-
-
         #calc-win {
             display: none;
-            width: 300px;
-            height: 400px;
+            width: 380px;
+            height: 420px;
+            margin-bottom: 10px;
         }
 
         #calc-input {
             width: 80%;
             height: 40px;
             font-size: 24px;
+        }
+
+        .numpad {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            gap: 8px;
+            width: 80%;
+            aspect-ratio: 5/4;
+            margin-top: 12px;
+        }
+
+        .num-btn {
+            display: flex;
+            width: 100%;
+            background: #5a5a5a;
+            border: 2px solid #5a5a5a9e;
+            border-radius: 20px;
+            font-family: Orbitron, sans-serif;
+            color: #ffffff;
+            font-size: 12px;
+            text-align: center;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .equals {
+            grid-row: span 2;
+        }
+
+        .icon-symbol {
+            font-family: 'Segoe UI Symbol', 'Noto Sans Symbols', 'DejaVu Sans', 'Arial Unicode MS', sans-serif;
+        }
+
+        .num-btn:hover {
+            border-color: #ffffff;
         }
 
         #note-win {
@@ -179,7 +208,60 @@
         #timer-win {
             display: none;
             width: 300px;
-            height: 200px;
+            height: 260px;
+        }
+
+        #timer-display {
+            display: flex;
+            width: 80%;
+            aspect-ratio: 3.5;
+            background: #5a5a5a;
+            border: 2px solid #5a5a5a9e;
+            border-radius: 20px;
+            font-family: Orbitron, sans-serif;
+            color: #ffffff;
+            font-size: 30px;
+            text-align: center;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        #timer-menu {
+            width: 80%;
+            height: 60px;
+            display: flex;
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .timer-btn {
+            width: 30%;
+            height: 90%;
+
+            background: #5a5a5a;
+            border: 2px solid #5a5a5a9e;
+            border-radius: 12px;
+            font-family: Orbitron, sans-serif;
+            color: #ffffff;
+            display: block;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .timer-btn:hover {
+            border-color: #ffffff;
+        }
+
+        .timer-btn-icon {
+            height: 90%;
+            aspect-ratio: 1;
+        }
+
+        #timer-slider {
+            width: 80%;
+            height: 20px;
         }
 
         #settings-win {
@@ -247,7 +329,32 @@
         <div id="calc-win-header" class="header">Calculator
             <div id="calc-close-btn" class="header-btn">✕</div>
         </div>
-        <input id="calc-input" class="text-area" type="text">
+        <input id="calc-input" class="text-area" type="text" readonly>
+        <div id="calc-numpad" class="numpad">
+            <button class="num-btn">9</button>
+            <button class="num-btn">8</button>
+            <button class="num-btn">7</button>
+            <button class="num-btn">&#43;</button>
+            <button class="num-btn">C</button>
+
+            <button class="num-btn">6</button>
+            <button class="num-btn">5</button>
+            <button class="num-btn">4</button>
+            <button class="num-btn">&#8722;</button>
+            <button class="num-btn icon-symbol">&#9003;</button>
+
+            <button class="num-btn">3</button>
+            <button class="num-btn">2</button>
+            <button class="num-btn">1</button>
+            <button class="num-btn">&#10005;</button>
+            <button class="num-btn equals">&#61;</button>
+
+            <button class="num-btn">0</button>
+            <button class="num-btn">.</button>
+            <button class="num-btn">IDK</button>
+            <button class="num-btn">&#247;</button>
+
+        </div>
     </div>
 
     <div id="note-win" class="glass-panel window">
@@ -261,6 +368,13 @@
         <div id="timer-win-header" class="header">Timer
             <div id="timer-close-btn" class="header-btn">✕</div>
         </div>
+        <div id="timer-display"></div>
+        <div id="timer-menu">
+            <button id="timer-start-btn" class="timer-btn"><img src="icons/play.svg" class="timer-btn-icon"></button>
+            <button id="timer-pause-btn" class="timer-btn"><img src="icons/pause.svg" class="timer-btn-icon"></button>
+            <button id="timer-reset-btn" class="timer-btn"><img src="icons/replay.svg" class="timer-btn-icon"></button>
+        </div>
+        <input type="range" id="timer-slider" min="1" max="60" value="5" step="1">
     </div>
 
     <div id="settings-win" class="glass-panel window">
