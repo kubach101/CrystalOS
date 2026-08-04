@@ -1,4 +1,3 @@
-
 function dragElement(element) {
     var initialX = 0;
     var initialY = 0;
@@ -19,7 +18,7 @@ function dragElement(element) {
         initialY = e.clientY;
         document.onmouseup = stopDragging;
         document.onmousemove = dragElement;
-        document.classList.add("dragged");
+        element.classList.add("dragged");
     }
 
     function dragElement(e) {
@@ -36,7 +35,7 @@ function dragElement(element) {
     function stopDragging() {
         document.onmouseup = null;
         document.onmousemove = null;
-        document.classList.remove("dragged");
+        element.classList.remove("dragged");
     }
 }
 function closeWindow(element) {
@@ -52,8 +51,15 @@ function openWindow(element) {
     element.style.zIndex = topIdx;
     topBar.style.zIndex = topIdx + 1;
 
+    element.style.left = ((window.innerWidth - element.offsetWidth) / 2) + "px";
+    element.style.top = ((window.innerHeight - element.offsetHeight) / 2) + "px";
+
     if (element.id === "calc-win") {
         display.focus();
+    }
+
+    if (element.id === "note-win") {
+        document.getElementById("note-textarea").focus();
     }
 }
 
@@ -90,11 +96,13 @@ function windowInit(appName) {
     var appIcon = document.querySelector("#" + appName + "-btn");
 
     dragElement(appWin)
-    appIcon.addEventListener("click", () => handleIconTap(appIcon, appWin));
+    if (appName != "wellcome") { appIcon.addEventListener("click", () => handleIconTap(appIcon, appWin)); }
     appWinClose.addEventListener("click", () => closeWindow(appWin));
     appWin.addEventListener("mousedown", () => handleWindowTap(appWin));
 }
 
+windowInit("wellcome")
+openWindow(document.getElementById("wellcome-win"))
 windowInit("calc")
 windowInit("note")
 windowInit("timer")
@@ -103,6 +111,13 @@ windowInit("settings")
 var display = document.getElementById("calc-input");
 
 document.addEventListener("keydown", (e) => {
+    const tag = document.activeElement.tagName;
+    const isTextInput = tag === 'TEXTAREA' || tag === 'INPUT';
+
+    if (e.key === 'Backspace') {
+        if (isTextInput) return;
+        e.preventDefault();
+    }
     if (document.activeElement !== display) return;
 
     var key = e.key;
@@ -188,9 +203,10 @@ function writeInput(idx) {
             input.value += '0';
             break;
         case 16:
-            input.value += '.';
+            input.value += "00";
             break;
         case 17:
+            input.value += '.';
             break;
         case 18:
             input.value += '/';
