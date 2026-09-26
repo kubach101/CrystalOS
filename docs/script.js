@@ -1,3 +1,43 @@
+var speedSlider = document.getElementById("settings-speed-slider");
+var speedValueLabel = document.getElementById("settings-speed-value");
+var setters = null;
+var explode = null;
+
+Module.onRuntimeInitialized = function () {
+    setters = {
+        rotSpeed: Module.cwrap("changeRotSpeed", null, ["number"])
+    };
+
+    // wasm gotowy - odblokuj slider i wyślij aktualną wartość startową
+    speedSlider.disabled = false;
+    setters.rotSpeed(parseFloat(speedSlider.value));
+
+    explode = Module.cwrap("explode", null, null);
+}
+
+speedSlider.addEventListener("input", () => {
+    var value = parseFloat(speedSlider.value);
+    speedValueLabel.textContent = value.toFixed(1) + "x";
+    if (setters) {
+        setters.rotSpeed(value);
+    }
+});
+function handleIconTap(icon, window) {
+
+    if (icon.classList.contains("selected")) {
+        icon.classList.remove("selected");
+        selectedIcon = undefined;
+        openWindow(window);
+        explode();
+    } else {
+        if (selectedIcon) {
+            selectedIcon.classList.remove("selected");
+        }
+        icon.classList.add("selected");
+        selectedIcon = icon;
+    }
+}
+
 function dragElement(element) {
     var initialX = 0;
     var initialY = 0;
@@ -76,19 +116,7 @@ function handleWindowTap(element) {
 
 var selectedIcon = undefined
 
-function handleIconTap(icon, window) {
-    if (icon.classList.contains("selected")) {
-        icon.classList.remove("selected");
-        selectedIcon = undefined;
-        openWindow(window);
-    } else {
-        if (selectedIcon) {
-            selectedIcon.classList.remove("selected");
-        }
-        icon.classList.add("selected");
-        selectedIcon = icon;
-    }
-}
+
 
 function windowInit(appName) {
     var appWin = document.querySelector("#" + appName + "-win");

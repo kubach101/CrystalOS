@@ -16,7 +16,6 @@ add_executable(run
 )
 
 target_include_directories(run PRIVATE external/cglm/include)
-target_include_directories(run PRIVATE external/shaders/include)
 
 target_link_libraries(run PRIVATE glfw glad)
 
