@@ -18,15 +18,30 @@
 
 float base_speed = 0.6f;
 bool explode_play = false;
+float explode_mul = 1.0f;
+float explode_max = 5.0f;
+float explode_htime = 2.0f;
+float explode_tcount = 0.0f;
 
 EXPORT void changeRotSpeed(float multiplier)
 {
     base_speed = multiplier;
 }
+static float explodeCurve(float t)
+{
+    float k = t / explode_htime;
+    float x = (k <= 1.0f) ? k : 2.0f - k;
+    return 1.0f + (explode_max - 1.0f) * x;
+}
 
 EXPORT void explode()
 {
-    explode_play = true;
+    if (explode_play && explode_tcount > explode_htime)
+    {
+        explode_tcount = 2.0f * explode_htime - explode_tcount;
+    }
+    else
+        explode_play = true;
 }
 GLuint createShaderProgram(const char *vertexShaderSource, const char *fragmentShaderSource);
 char *readTextFile(const char *path);
@@ -38,9 +53,8 @@ GLFWwindow *window = NULL;
 GLuint CrystalProgram;
 
 GLuint VAO;
-GLuint VBO_pos, VBO_normal;                   // geometria bazowa (per-vertex)
-GLuint VBO_model, VBO_instPos, VBO_axisSpeed; // dane per-instancję
-
+GLuint VBO_pos, VBO_normal;
+GLuint VBO_model, VBO_instPos, VBO_axisSpeed;
 GLint uViewLoc, uProjLoc, uSceneRotLoc, uTimeLoc, uBaseSpeedLoc, uDisLoc, uFresLoc, uExplode;
 
 vec3 eye = {0.0f, 0.0f, 60.0f};
@@ -51,15 +65,9 @@ mat4 sceneRotation;
 float sceneAngle = 0.0f;
 float totalTime = 0.0f;
 float dt = 0.0f;
-float explode_mul = 1.0f;
-float explode_max = 5.0f;
-float explode_htime = 2.0f;
-float explode_tcount = 0.0f;
 
 unsigned int seed;
 
-// Geometria pojedynczego kryształu - 12 wierzchołków / 4 trójkąty (używana raz, współdzielona
-// przez wszystkie instancje dzięki instanced renderingowi).
 const int v_num = 12;
 GLfloat crystalPositions[] = {
     1.0f,
@@ -102,9 +110,6 @@ GLfloat crystalPositions[] = {
     1.0f,
     -1.0f,
 };
-
-// Jedna normalna na trójkąt (3 kolejne wierzchołki), tak jak w oryginale - trzymana per-vertex,
-// ale w osobnym VBO, wydzielona z dawnego interleaved bufora.
 GLfloat crystalNormals[] = {
     -0.57735f,
     -0.57735f,
@@ -147,13 +152,11 @@ GLfloat crystalNormals[] = {
     -0.57735f,
 };
 
-// Liczba instancji (kryształów w scenie)
 const int c_num = 300;
 
-// Dane per-instancję: mat4 (16 float) + pozycja (3 float) + oś obrotu i prędkość (4 float)
-GLfloat *instanceModelMatrices = NULL; // c_num * 16
-GLfloat *instancePositions = NULL;     // c_num * 3
-GLfloat *instanceAxisSpeed = NULL;     // c_num * 4
+GLfloat *instanceModelMatrices = NULL;
+GLfloat *instancePositions = NULL;
+GLfloat *instanceAxisSpeed = NULL;
 
 void main_loop(void)
 {
@@ -465,18 +468,14 @@ void CreateCrystalScene(GLfloat *outModelMatrices, GLfloat *outPositions, GLfloa
 void animateExplosion()
 {
     explode_tcount += dt;
-    if (explode_tcount <= explode_htime)
-    {
-        explode_mul += explode_max / explode_htime * dt;
-    }
-    else if (explode_tcount < 2 * explode_htime)
-    {
-        explode_mul -= explode_max / explode_htime * dt;
-    }
-    else
+    if (explode_tcount >= 2.0f * explode_htime)
     {
         explode_play = false;
         explode_tcount = 0.0f;
         explode_mul = 1.0f;
+    }
+    else
+    {
+        explode_mul = explodeCurve(explode_tcount);
     }
 }

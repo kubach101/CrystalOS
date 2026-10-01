@@ -450,7 +450,7 @@
         cursor: pointer;
       }
 
-      .clock {
+      #clock {
         position: absolute;
         right: 0;
         top: 0;
@@ -461,6 +461,8 @@
         flex-direction: column;
         justify-content: center;
         z-index: 1;
+        text-align: center;
+        font-size: 38px;
       }
 
       .widget_text {
@@ -588,6 +590,7 @@
         disabled
       />
     </div>
+    <div id="clock" class="glass-panel">TIME</div>
 
     <script>
       var Module = {

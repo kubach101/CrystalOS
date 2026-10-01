@@ -324,3 +324,12 @@ document.getElementById("timer-start-btn").addEventListener("click", () => {
 
 document.getElementById("timer-pause-btn").addEventListener("click", () => timer.pause());
 document.getElementById("timer-reset-btn").addEventListener("click", () => timer.reset(getSliderSeconds()));
+
+function refreshTime() {
+    const now = new Date();
+    document.getElementById("clock").textContent =
+        now.toLocaleTimeString();
+}
+
+refreshTime();
+setInterval(refreshTime, 1000);

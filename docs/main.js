@@ -36,7 +36,7 @@ Module["expectedDataFileDownloads"]++;
                 "/",
             );
         }
-        var PACKAGE_NAME = "C:/personal_website/src/main.data";
+        var PACKAGE_NAME = "C:/personal_website/docs/main.data";
         var REMOTE_PACKAGE_BASE = "main.data";
         var REMOTE_PACKAGE_NAME = Module["locateFile"]
             ? Module["locateFile"](REMOTE_PACKAGE_BASE, "")
@@ -117,10 +117,10 @@ Module["expectedDataFileDownloads"]++;
                     Module["FS_createDataFile"](name, null, data, true, true, true);
                 }
                 Module["removeRunDependency"](
-                    "datafile_C:/personal_website/src/main.data",
+                    "datafile_C:/personal_website/docs/main.data",
                 );
             }
-            Module["addRunDependency"]("datafile_C:/personal_website/src/main.data");
+            Module["addRunDependency"]("datafile_C:/personal_website/docs/main.data");
             if (!Module["preloadResults"]) Module["preloadResults"] = {};
             Module["preloadResults"][PACKAGE_NAME] = { fromCache: false };
             if (!fetched) {
