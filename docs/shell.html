@@ -26,14 +26,15 @@
         user-select: none;
       }
 
+      /* Canvas wypełnia całe okno. Rozmiar bufora rysowania ustawia main.c
+         (przez resizeCanvas), a CSS tylko rozciąga go na cały ekran. */
       canvas#canvas {
         display: block;
         position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        box-shadow: 0 0 40px rgba(0, 0, 0, 0.6);
-        border: 2px solid #000000;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
         background: #000000;
       }
 
@@ -454,7 +455,9 @@
         position: absolute;
         right: 0;
         top: 0;
-        width: 200px;
+        /* Orbitron jest szerszy niż domyślna czcionka, więc panel może się
+           rozciągnąć zamiast zawijać godzinę do drugiej linii. */
+        min-width: 200px;
         height: 80px;
         padding: 12px;
         display: flex;
@@ -462,6 +465,8 @@
         justify-content: center;
         z-index: 1;
         text-align: center;
+        white-space: nowrap;
+        font-family: Orbitron, sans-serif;
         font-size: 38px;
       }
 
@@ -475,12 +480,7 @@
   </head>
 
   <body>
-    <canvas
-      id="canvas"
-      width="1920"
-      height="1080"
-      oncontextmenu="event.preventDefault()"
-    ></canvas>
+    <canvas id="canvas" oncontextmenu="event.preventDefault()"></canvas>
     <div id="top" style="display: none; z-index: 1"></div>
     <div class="glass-panel sidebar">
       <div class="widget_text">Apps</div>

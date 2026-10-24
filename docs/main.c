@@ -43,23 +43,70 @@ EXPORT void explode()
     else
         explode_play = true;
 }
+
+GLFWwindow *window = NULL;
+
+vec3 eye = {0.0f, 0.0f, 60.0f};
+vec3 up = {0.0f, 1.0f, 0.0f};
+mat4 view, proj;
+
+// Aktualny rozmiar bufora rysowania (w pikselach). Wartości startowe są używane,
+// dopóki JS nie wywoła resizeCanvas() (może się to zdarzyć przed main()).
+int vp_w = 1920;
+int vp_h = 1080;
+
+// Kompozycja sceny była projektowana pod 16:9 przy pionowym FOV = 45 stopni.
+// Na szerszych ekranach zostaje pionowy FOV, a na węższych (np. pion w telefonie)
+// zwiększamy go tak, żeby poziomy kąt widzenia nie był mniejszy niż w 16:9 -
+// inaczej kryształy po bokach byłyby ucięte.
+static void updateCamera(void)
+{
+    const float baseFovY = glm_rad(45.0f);
+    const float maxFovY = glm_rad(100.0f);
+    const float refAspect = 16.0f / 9.0f;
+
+    float aspect = (float)vp_w / (float)vp_h;
+    float fovY = baseFovY;
+    if (aspect < refAspect)
+    {
+        fovY = 2.0f * atanf(tanf(baseFovY * 0.5f) * refAspect / aspect);
+        if (fovY > maxFovY)
+            fovY = maxFovY;
+    }
+
+    glm_perspective(fovY, aspect, 2.0f, 155.0f, proj);
+    glm_lookat(eye, (vec3){0.0f, 0.0f, -1.0f}, up, view);
+}
+
+// Wywoływane z JS (przy starcie i przy każdej zmianie rozmiaru okna).
+// w, h = docelowy rozmiar bufora rysowania w pikselach.
+EXPORT void resizeCanvas(int w, int h)
+{
+    if (w <= 0 || h <= 0)
+        return; // zminimalizowane okno - nie ma co liczyć
+
+    vp_w = w;
+    vp_h = h;
+
+    // Okno GLFW istnieje dopiero po main(); w Emscripten glfwSetWindowSize
+    // zmienia rozmiar bufora canvasa, a w wersji natywnej rozmiar okna.
+    if (window != NULL)
+        glfwSetWindowSize(window, vp_w, vp_h);
+
+    updateCamera();
+}
 GLuint createShaderProgram(const char *vertexShaderSource, const char *fragmentShaderSource);
 char *readTextFile(const char *path);
 void CreateCrystalScene(GLfloat *outModelMatrices, GLfloat *outPositions, GLfloat *outAxisSpeed);
 float frand(float min, float max);
 void animateExplosion();
 
-GLFWwindow *window = NULL;
 GLuint CrystalProgram;
 
 GLuint VAO;
 GLuint VBO_pos, VBO_normal;
 GLuint VBO_model, VBO_instPos, VBO_axisSpeed;
 GLint uViewLoc, uProjLoc, uSceneRotLoc, uTimeLoc, uBaseSpeedLoc, uDisLoc, uFresLoc, uExplode;
-
-vec3 eye = {0.0f, 0.0f, 60.0f};
-vec3 up = {0.0f, 1.0f, 0.0f};
-mat4 view, proj;
 
 mat4 sceneRotation;
 float sceneAngle = 0.0f;
@@ -165,7 +212,7 @@ void main_loop(void)
     totalTime += dt;
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glViewport(0, 0, 1920, 1080);
+    glViewport(0, 0, vp_w, vp_h);
 
     sceneAngle += dt * 15.0f * (float)M_PI / 180.0f;
     glm_mat4_identity(sceneRotation);
@@ -199,7 +246,7 @@ int main()
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    window = glfwCreateWindow(1920, 1080, "Tidal Simulation by Kuba Chmura", NULL, NULL);
+    window = glfwCreateWindow(vp_w, vp_h, "Tidal Simulation by Kuba Chmura", NULL, NULL);
     if (window == NULL)
     {
         printf("Error creating a window\n");
@@ -207,7 +254,7 @@ int main()
         return -1;
     }
     glfwMakeContextCurrent(window);
-    glViewport(0, 0, 1920, 1080);
+    glViewport(0, 0, vp_w, vp_h);
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -282,8 +329,9 @@ int main()
     uExplode = glGetUniformLocation(CrystalProgram, "explode");
 
     glfwSetTime(0);
-    glm_perspective(glm_rad(45.0f), 1920.0f / 1080.0f, 2.0f, 155.0f, proj);
-    glm_lookat(eye, (vec3){0.0f, 0.0f, -1.0f}, up, view);
+    // Rozmiar mógł już zostać ustawiony z JS (onRuntimeInitialized odpala się przed main()),
+    // więc liczymy kamerę z aktualnego vp_w/vp_h, a nie ze stałych.
+    updateCamera();
 
 #ifdef __EMSCRIPTEN__
     emscripten_set_main_loop(main_loop, 0, 1);
