@@ -50,15 +50,9 @@ vec3 eye = {0.0f, 0.0f, 60.0f};
 vec3 up = {0.0f, 1.0f, 0.0f};
 mat4 view, proj;
 
-// Aktualny rozmiar bufora rysowania (w pikselach). Wartości startowe są używane,
-// dopóki JS nie wywoła resizeCanvas() (może się to zdarzyć przed main()).
 int vp_w = 1920;
 int vp_h = 1080;
 
-// Kompozycja sceny była projektowana pod 16:9 przy pionowym FOV = 45 stopni.
-// Na szerszych ekranach zostaje pionowy FOV, a na węższych (np. pion w telefonie)
-// zwiększamy go tak, żeby poziomy kąt widzenia nie był mniejszy niż w 16:9 -
-// inaczej kryształy po bokach byłyby ucięte.
 static void updateCamera(void)
 {
     const float baseFovY = glm_rad(45.0f);
@@ -78,18 +72,14 @@ static void updateCamera(void)
     glm_lookat(eye, (vec3){0.0f, 0.0f, -1.0f}, up, view);
 }
 
-// Wywoływane z JS (przy starcie i przy każdej zmianie rozmiaru okna).
-// w, h = docelowy rozmiar bufora rysowania w pikselach.
 EXPORT void resizeCanvas(int w, int h)
 {
     if (w <= 0 || h <= 0)
-        return; // zminimalizowane okno - nie ma co liczyć
+        return;
 
     vp_w = w;
     vp_h = h;
 
-    // Okno GLFW istnieje dopiero po main(); w Emscripten glfwSetWindowSize
-    // zmienia rozmiar bufora canvasa, a w wersji natywnej rozmiar okna.
     if (window != NULL)
         glfwSetWindowSize(window, vp_w, vp_h);
 
@@ -329,8 +319,7 @@ int main()
     uExplode = glGetUniformLocation(CrystalProgram, "explode");
 
     glfwSetTime(0);
-    // Rozmiar mógł już zostać ustawiony z JS (onRuntimeInitialized odpala się przed main()),
-    // więc liczymy kamerę z aktualnego vp_w/vp_h, a nie ze stałych.
+
     updateCamera();
 
 #ifdef __EMSCRIPTEN__
@@ -418,9 +407,6 @@ float frand(float min, float max)
     return min + ((float)rand() / (float)RAND_MAX * (max - min));
 }
 
-// Generuje dla każdej instancji: statyczną macierz modelu (losowa rotacja startowa + skala),
-// pozycję na "skorupie" wokół centrum (rozmieszczanie z odrzucaniem kolizji, jak w oryginale)
-// oraz oś i prędkość ciągłego obrotu, animowanego później w vertex shaderze.
 void CreateCrystalScene(GLfloat *outModelMatrices, GLfloat *outPositions, GLfloat *outAxisSpeed)
 {
     const float minShellRadius = 20.0f;

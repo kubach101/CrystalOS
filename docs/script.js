@@ -2,10 +2,8 @@ var speedSlider = document.getElementById("settings-speed-slider");
 var speedValueLabel = document.getElementById("settings-speed-value");
 var setters = null;
 var explode = null;
-var resizeCanvas = null; // musi być zadeklarowane, bo resize może odpalić przed startem wasm
+var resizeCanvas = null;
 
-// Dopasowuje bufor rysowania do okna. Mnożymy przez devicePixelRatio, żeby obraz
-// był ostry na ekranach HiDPI (z limitem x2, żeby nie dławić słabszych GPU).
 function fitCanvas() {
   if (!resizeCanvas) return; // wasm jeszcze niegotowy
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -19,7 +17,6 @@ Module.onRuntimeInitialized = function () {
     rotSpeed: Module.cwrap("changeRotSpeed", null, ["number"]),
   };
 
-  // wasm gotowy - odblokuj slider i wyślij aktualną wartość startową
   speedSlider.disabled = false;
   setters.rotSpeed(parseFloat(speedSlider.value));
 
@@ -262,7 +259,200 @@ for (var i = 0; i < numpad.length; i++) {
   );
 }
 
-function createTimer(display) {
+var ALARM_MAX_SECONDS = 30;
+
+function alarmTone(ctx, out, o) {
+  var osc = ctx.createOscillator();
+  var gain = ctx.createGain();
+  var attack = o.attack || 0.01;
+  var peak = o.peak || 0.5;
+
+  osc.type = o.type || "sine";
+  osc.frequency.setValueAtTime(o.freq, o.t);
+  if (o.sweep) {
+    for (var i = 0; i < o.sweep.length; i++) {
+      osc.frequency.linearRampToValueAtTime(o.sweep[i][1], o.t + o.sweep[i][0]);
+    }
+  }
+
+  var release = o.sustain ? Math.min(0.03, o.dur / 2) : o.dur - attack;
+  var holdEnd = o.t + o.dur - release;
+  gain.gain.setValueAtTime(0.0001, o.t);
+  gain.gain.linearRampToValueAtTime(peak, o.t + attack);
+  if (holdEnd > o.t + attack) gain.gain.setValueAtTime(peak, holdEnd);
+  gain.gain.exponentialRampToValueAtTime(0.0001, o.t + o.dur);
+
+  osc.connect(gain);
+  gain.connect(out);
+  osc.start(o.t);
+  osc.stop(o.t + o.dur + 0.05);
+}
+
+var ALARM_SOUNDS = {
+  beep: {
+    cycle: 1.4,
+    play: function (ctx, out, t) {
+      for (var i = 0; i < 3; i++) {
+        alarmTone(ctx, out, {
+          type: "triangle",
+          freq: 1000,
+          t: t + i * 0.22,
+          dur: 0.14,
+          peak: 0.6,
+          sustain: true,
+        });
+      }
+    },
+  },
+  chime: {
+    cycle: 2.4,
+    play: function (ctx, out, t) {
+      var notes = [523.25, 659.25, 783.99, 1046.5];
+      for (var i = 0; i < notes.length; i++) {
+        var start = t + i * 0.16;
+        alarmTone(ctx, out, { freq: notes[i], t: start, dur: 1.8, peak: 0.35 });
+        alarmTone(ctx, out, {
+          freq: notes[i] * 2,
+          t: start,
+          dur: 0.8,
+          peak: 0.08,
+        });
+      }
+    },
+  },
+  bell: {
+    cycle: 3.2,
+    play: function (ctx, out, t) {
+      var ratios = [1, 2, 2.76, 5.4, 8.93];
+      var peaks = [0.4, 0.2, 0.15, 0.08, 0.04];
+      for (var strike = 0; strike < 2; strike++) {
+        for (var i = 0; i < ratios.length; i++) {
+          alarmTone(ctx, out, {
+            freq: 520 * ratios[i],
+            t: t + strike * 1.2,
+            dur: 3.0 / (1 + i * 0.6),
+            peak: peaks[i],
+            attack: 0.004,
+          });
+        }
+      }
+    },
+  },
+  digital: {
+    cycle: 1.0,
+    play: function (ctx, out, t) {
+      for (var i = 0; i < 4; i++) {
+        alarmTone(ctx, out, {
+          type: "square",
+          freq: 1760,
+          t: t + i * 0.12,
+          dur: 0.07,
+          peak: 0.25,
+          sustain: true,
+        });
+      }
+    },
+  },
+  siren: {
+    cycle: 2.6,
+    play: function (ctx, out, t) {
+      alarmTone(ctx, out, {
+        type: "sawtooth",
+        freq: 600,
+        sweep: [
+          [0.5, 1000],
+          [1.0, 600],
+          [1.5, 1000],
+          [2.0, 600],
+        ],
+        t: t,
+        dur: 2.0,
+        peak: 0.2,
+        sustain: true,
+      });
+    },
+  },
+};
+
+var alarm = (function () {
+  var ctx = null;
+  var master = null;
+  var current = null;
+  var endTimeout = null;
+  var volume = 0.7;
+  var soundId = "beep";
+
+  function ensureContext() {
+    if (!ctx) {
+      var AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return null;
+      ctx = new AudioCtx();
+      master = ctx.createGain();
+      master.gain.value = volume;
+      master.connect(ctx.destination);
+    }
+    if (ctx.state !== "running") {
+      var resumed = ctx.resume();
+      if (resumed && resumed.catch) resumed.catch(function () {});
+    }
+    return ctx;
+  }
+
+  function setVolume(v) {
+    volume = Math.min(1, Math.max(0, v));
+    if (master) master.gain.setTargetAtTime(volume, ctx.currentTime, 0.01);
+  }
+
+  function setSound(id) {
+    if (ALARM_SOUNDS[id]) soundId = id;
+  }
+
+  function stop() {
+    clearTimeout(endTimeout);
+    endTimeout = null;
+    if (current && ctx) {
+      var bus = current;
+      current = null;
+      bus.gain.cancelScheduledValues(ctx.currentTime);
+      bus.gain.setTargetAtTime(0, ctx.currentTime, 0.02);
+      setTimeout(function () {
+        bus.disconnect();
+      }, 300);
+    }
+  }
+
+  function play(opts) {
+    var c = ensureContext();
+    if (!c) return;
+    stop();
+
+    var def = ALARM_SOUNDS[soundId];
+    var cycles =
+      opts && opts.once
+        ? 1
+        : Math.max(1, Math.floor(ALARM_MAX_SECONDS / def.cycle));
+    var bus = c.createGain();
+    bus.connect(master);
+
+    var t0 = c.currentTime + 0.05;
+    for (var i = 0; i < cycles; i++) {
+      def.play(c, bus, t0 + i * def.cycle);
+    }
+
+    current = bus;
+    endTimeout = setTimeout(stop, (cycles * def.cycle + 3) * 1000);
+  }
+
+  return {
+    unlock: ensureContext,
+    play: play,
+    stop: stop,
+    setVolume: setVolume,
+    setSound: setSound,
+  };
+})();
+
+function createTimer(display, onFinish) {
   let remainingMs = 0;
   let endTime = 0;
   let intervalId = null;
@@ -277,12 +467,14 @@ function createTimer(display) {
 
   function tick() {
     let left = endTime - Date.now();
-    if (left <= 0) {
+    let finished = left <= 0;
+    if (finished) {
       left = 0;
       pause();
     }
     display.textContent = formatTime(left);
     remainingMs = left;
+    if (finished && onFinish) onFinish();
   }
 
   function start(durationSeconds) {
@@ -310,7 +502,7 @@ function createTimer(display) {
 }
 
 var timerDisplay = document.getElementById("timer-display");
-var timer = createTimer(timerDisplay);
+var timer = createTimer(timerDisplay, () => alarm.play());
 var timerSlider = document.getElementById("timer-slider");
 
 function getSliderSeconds() {
@@ -320,21 +512,45 @@ function getSliderSeconds() {
 timer.reset(getSliderSeconds());
 
 timerSlider.addEventListener("input", () => {
+  alarm.stop();
   if (!timer.isRunning()) {
     timer.reset(getSliderSeconds());
   }
 });
 
 document.getElementById("timer-start-btn").addEventListener("click", () => {
+  alarm.stop();
+  alarm.unlock();
   if (!timer.isRunning()) timer.start(getSliderSeconds());
 });
 
+document.getElementById("timer-pause-btn").addEventListener("click", () => {
+  alarm.stop();
+  timer.pause();
+});
+document.getElementById("timer-reset-btn").addEventListener("click", () => {
+  alarm.stop();
+  timer.reset(getSliderSeconds());
+});
+
+var soundSelect = document.getElementById("settings-sound-select");
+var volumeSlider = document.getElementById("settings-volume-slider");
+var volumeValueLabel = document.getElementById("settings-volume-value");
+
+alarm.setSound(soundSelect.value);
+alarm.setVolume(parseInt(volumeSlider.value, 10) / 100);
+
+soundSelect.addEventListener("change", () => alarm.setSound(soundSelect.value));
+
+volumeSlider.addEventListener("input", () => {
+  var percent = parseInt(volumeSlider.value, 10);
+  volumeValueLabel.textContent = percent + "%";
+  alarm.setVolume(percent / 100);
+});
+
 document
-  .getElementById("timer-pause-btn")
-  .addEventListener("click", () => timer.pause());
-document
-  .getElementById("timer-reset-btn")
-  .addEventListener("click", () => timer.reset(getSliderSeconds()));
+  .getElementById("settings-sound-test-btn")
+  .addEventListener("click", () => alarm.play({ once: true }));
 
 function refreshTime() {
   const now = new Date();

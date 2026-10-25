@@ -138,9 +138,9 @@ Module["expectedDataFileDownloads"]++;
   loadPackage({
     files: [
       { filename: "/shaders/crystal.frag.glsl", start: 0, end: 1335 },
-      { filename: "/shaders/crystal.vert.glsl", start: 1335, end: 3753 },
+      { filename: "/shaders/crystal.vert.glsl", start: 1335, end: 2925 },
     ],
-    remote_package_size: 3753,
+    remote_package_size: 2925,
   });
 })();
 var programArgs = [];
