@@ -17,7 +17,7 @@ I used them for the rest: structure written in HTML, styled in CSS and Java Scri
 ### Style ###
 
 I chose a liquid glass style with dark colors. I liked how the animation blended behind it.
-
+I used darker colors since I am a fan of dark-mode.
 
 ### Links & resorces I used ###
 
